@@ -7,12 +7,12 @@ Provides a detailed log file in JSON format.
 
 
 ## To Do
-[] Nice picture
-* Documentation
-* move much of the code into functions
-* move pid into separate project
+- [ ] Nice picture
+- [ ] Documentation
+- [ ] move much of the code into functions
+- [ ] move pid into separate project
   * build tests for pid
-* clean up unused functions
+- [ ] clean up unused functions
 
 
 ## Contributions
