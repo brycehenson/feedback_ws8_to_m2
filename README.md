@@ -7,7 +7,7 @@ Provides a detailed log file in JSON format.
 
 | ![Feedback Demonstration](example_feedback.png "Fig1") | 
 |:--:| 
-| **Figure1**- The program is able to perform low bandwith (~20Hz) feedback to the laser freqeuncy with excelent stability and range. |
+| **Figure 1**- The program is able to perform low bandwith (~20Hz) feedback to the laser freqeuncy with excelent stability and range. |
 
 
 ## To Do
