@@ -7,7 +7,7 @@ Provides a detailed log file in JSON format.
 
 
 ## To Do
-* Nice picture
+[] Nice picture
 * Documentation
 * move much of the code into functions
 * move pid into separate project
