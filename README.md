@@ -1,5 +1,5 @@
 # WS8 Wavemeter to M Squared SolsTiS Laser Feedback
-***Bryce Henson, Jacob A. Ross***   
+***Bryce Henson, [Jacob A. Ross](https://github.com/GroundhogState)***    
 Uses software in the loop feedback of the optical frequency of a M Squared SolsTiS Laser (with doubler) to a WS8 wavemeter.
 Checks if the laser has unlocked either the doubler or the Ti:Saf and relocks.
 Can instigate an unlock of the doubler and a scan of the etalon.
