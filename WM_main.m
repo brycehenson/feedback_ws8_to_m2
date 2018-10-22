@@ -1,3 +1,5 @@
+
+addpath(genpath('lib'))
 mypool=gcp('nocreate');
 createpool=true;
 if isprop(mypool,'NumWorkers')
@@ -26,7 +28,7 @@ warning off instrument:fscanf:unsuccessfulRead
 %Running locally, the WM feedback loop runs for 62+-11 ms (16Hz)
 
 spmd
-    r = WM_control(labindex)
+    r = WM_control(labindex);
 end
 
 
