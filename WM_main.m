@@ -7,7 +7,7 @@ if isprop(mypool,'NumWorkers')
         createpool=false;
 end
 end
-% parpool(1); delete(gcp);
+% delete(gcp('nocreate'))
 % myCluster = parcluster('local')
 % delete(myCluster.Jobs);
 % myCluster.NumWorkers=2;
@@ -18,6 +18,7 @@ parpool('local',2)
 end
 
 warning off instrument:fscanf:unsuccessfulRead
+%warning on instrument:fscanf:unsuccessfulRead
 %Note that the parallel pooling within WLM has been disabled.
 %This prevent channel-switching in the WLM, but this isn't necessary unless we need Cs ref.
 

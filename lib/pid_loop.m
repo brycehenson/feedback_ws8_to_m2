@@ -33,7 +33,7 @@ function pidstate=pid_loop(pidstate)
 
 
 % Bugs,Improvements,Ideas
-% initalization option
+% verbose mode
 % scale pidstate.aw_thresh_range
 % output is not continious with proportional control gain change
 % Derivative term not implemented
@@ -52,50 +52,88 @@ function pidstate=pid_loop(pidstate)
 
 
 %------------- BEGIN CODE --------------
+if ~isfield(pidstate,'initalize')
+    warning('call pid_loop with the pidstate.initalize=true to set things up')
+    pidstate.initalize=true;
+end
 
-
-
-
-if ~isfield(pidstate,'integrator')
+if pidstate.initalize
     if ~isfield(pidstate,'outlims')
-        pidstate.erroror('requires more information')
-    else
-        pidstate.ctr_output=mean(pidstate.outlims);
+       error('requires output limits')
+    end 
+    if ~isfield(pidstate,'verbose')
+        pidstate.verbose=0;
+    end   
+    if ~isfield(pidstate,'ctr_output')
+        warning('no inital output specified using middle of output limits')
+        mean(pidstate.outlims)
     end
-end
-
-
-if ~isfield(pidstate,'loop_time')
-    pidstate.loop_time=0;
+    if ~isfield(pidstate,'slew_lim')
+        warning('no slew rate limit specified setting as inf')
+        pidstate.slew_lim=inf;
+    end
+    if ~isfield(pidstate,'dout_lim')
+        warning('no output delta specified setting as inf')
+        pidstate.dout_lim=inf;
+    end
+    if ~isfield(pidstate,'aw_thresh_range')
+        pidstate.aw_thresh_range=range(pidstate.outlims)*1e-2;
+    end
+    
+    pidstate.aw=1;
+    pidstate.meas=pidstate.setpt;
+    pidstate.integrator=pidstate.ctr_output;
+    pidstate.ctr_prev=pidstate.ctr_output;
+    pidstate.loop_time=1e-9;
     pidstate.time=posixtime(datetime('now'));
-end
+    pidstate.initalize=false;
 
-if ~isfield(pidstate,'ctr_output')
-    pidstate.ctr_output=pidstate.integrator;
 end
 
 pidstate.ctr_prev=pidstate.ctr_output;
 
 logist=@(x) 1./(1+exp(-x));
-aw_fun_range=@(x,y) (logist((x-pidstate.aw_thresh_range)*10/pidstate.aw_thresh_range))*(y<0)...
-    +(1-logist((x-1+pidstate.aw_thresh_range)*10/pidstate.aw_thresh_range))*(y>0);
+%scale the anti windup range to a unit output range
+scaled_aw_range=pidstate.aw_thresh_range/range(pidstate.outlims);
+%needs to be defined for di==0
+aw_fun_range=@(x,y) (logist((x-scaled_aw_range)*10/scaled_aw_range))*(y<=0)...
+    +(1-logist((x-1+scaled_aw_range)*10/scaled_aw_range))*(y>0);
 
+% xvals=linspace(0,1,1e4);
+% plot(xvals,aw_fun_range(xvals,1))
+% hold on
+% plot(xvals,aw_fun_range(xvals,-1))
+% hold off
+
+if pidstate.verbose>1
+    fprintf('previous control output %.3f\n',pidstate.ctr_prev)
+end
 
 pidstate.error=pidstate.meas-pidstate.setpt;
+if pidstate.verbose>1,fprintf('error %.3f\n',pidstate.error), end
 di=pidstate.k_int*pidstate.loop_time*pidstate.error;
-pidstate.aw=aw_fun_range((pidstate.ctr_prev-pidstate.outlims(1))/range(pidstate.outlims),di);
+scaled_last_control=(pidstate.ctr_prev-pidstate.outlims(1))/range(pidstate.outlims);
+if pidstate.verbose>1,fprintf('scaled last control %.3f\n',scaled_last_control), end
+pidstate.aw=aw_fun_range(scaled_last_control,di);
+if pidstate.verbose>1, fprintf('anti windup %.3f\n',pidstate.aw), end
 di=di*pidstate.aw; %actuator range anti windup
 pidstate.integrator=pidstate.integrator+di;%+aw_slew*k_aw_rate;
 pidstate.integrator=min(max(-pidstate.int_lim,pidstate.integrator),pidstate.int_lim);
 pidstate.ctr_output=pidstate.integrator+pidstate.k_prop*pidstate.error;%-aw_rate*k_aw_rate);
 
-pidstate.slew=(pidstate.ctr_prev-pidstate.ctr_output)/(pidstate.loop_time);
+pidstate.delt_out=(pidstate.ctr_prev-pidstate.ctr_output);
+pidstate.slew=pidstate.delt_out/(pidstate.loop_time);
+if pidstate.verbose>1,fprintf('desired slew %.3f\n',pidstate.slew), end
+
+
+%combine the delta output step limits and slew limits as an effective slew limit
+combined_delt_lim=min(pidstate.slew_lim*pidstate.loop_time,pidstate.dout_lim);
 %fprintf('slew before corr %f\n',pidstate.slew)
-if abs(pidstate.slew/pidstate.slew_lim)>1
+if abs(pidstate.delt_out)>combined_delt_lim
     %fprintf('pre mod int %f\n',pidstate.integrator)
-    pidstate.integrator=pidstate.ctr_prev-pidstate.slew_lim*sign(pidstate.slew)*pidstate.loop_time-pidstate.k_prop*pidstate.error;
+    pidstate.integrator=pidstate.ctr_prev-combined_delt_lim*sign(pidstate.slew)-pidstate.k_prop*pidstate.error;
     %fprintf('slew mod int %f\n',pidstate.integrator)
-    pidstate.aw_slew=1;
+    pidstate.aw_slew=1; %not a anti windup should just call slew lim
 else
     pidstate.aw_slew=0;
 end
@@ -106,10 +144,20 @@ end
 pidstate.ctr_output=pidstate.integrator+pidstate.k_prop*pidstate.error;%-aw_rate*k_aw_rate);
 pidstate.ctr_output=min(max(pidstate.outlims(1),pidstate.ctr_output),pidstate.outlims(2));
 pidstate.slew=(pidstate.ctr_prev-pidstate.ctr_output)/(pidstate.loop_time);
+if pidstate.verbose>1 && pidstate.aw_slew
+    fprintf('clamped slew %.3f\n',pidstate.slew)
+end
+if pidstate.verbose>1 &&pidstate.aw_slew
+    fprintf('output %.3f\n',pidstate.ctr_output)
+end
 %fprintf('slew after corr %f\n',pidstate.slew)
 
 
 old_time=pidstate.time;
 pidstate.time=posixtime(datetime('now'));
 pidstate.loop_time=(pidstate.time-old_time);
+
+if pidstate.verbose>1
+    fprintf('loop time %.3f\n',pidstate.loop_time)
+end
 end

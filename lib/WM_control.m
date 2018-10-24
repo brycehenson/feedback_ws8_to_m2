@@ -54,7 +54,7 @@ if method_key ==1 %Simulates the run counter
    end
    ret = 0;
 elseif method_key==2 %feedback loop!
-    try
+    
     %intialize connection
     wmhandle=WLM.getInstance();
     solstis_clearBuffer();
@@ -69,29 +69,35 @@ elseif method_key==2 %feedback loop!
     %START USER OPTIONS
     pid_res=[];
     pause(1)
+    wait_for_align_before_lock=5;
     resonator_range=20000; %thershold in mhz before it considers doing an etalon search
     intv_beam_align=60*10; %how often to do an auto realign (s)
     intv_blue_meas=1;           %how often to measure the blue light
-    ecd_relock_pd_thresh=0.7;
-    ecd_relock_err_thresh=100; %MHzhow close to the set point does the laser have to be to bother relocking the ECD
+    ecd_relock_pd_thresh=0.5; %min power before relock attempt
+    ecd_relock_err_thresh=200; %MHzhow close to the set point does the laser have to be to bother relocking the ECD
     pid_res.setpt=wmhandle.GetFreq(1);%setpt; %max val set pt
     pid_res.k_int=-1e-2;
     pid_res.k_prop=5e-4;
     pid_res.outlims=[5,95];
-    pid_res.aw_thresh_range=5e-3; %how far away from the edge aw starts (full range 0-1)
+    pid_res.aw_thresh_range=5e-1; %how far away from the edge aw starts (full range 0-1)
     pid_res.int_lim=200;
-    pid_res.slew_lim=20;
+    pid_res.slew_lim=5;
+    pid_res.dout_lim=10;
+    pid_res.verbose=0;
     intv_res_check=3;
     log_dir='Y:\TDC_user\ProgramFiles\my_read_tdc_gui_v1.0.1\dld_output\';
 
     %pid system for the etalon
+    etl_lock_thresh=2000;%MHZ tolerance about half the step size
     pid_etalon=[];
     pid_etalon.k_int=1e-4;
     pid_etalon.k_prop=1e-5;
     pid_etalon.int_lim=200;
     pid_etalon.outlims=[1,99];
-    pid_etalon.slew_lim=10;
-    pid_etalon.aw_thresh_range=5e-2;
+    pid_etalon.slew_lim=5;
+    pid_etalon.dout_lim=20;
+    pid_etalon.aw_thresh_range=5;
+    pid_etalon.initalize=true;
 
     %END USER OPTIONS
 
@@ -112,6 +118,7 @@ elseif method_key==2 %feedback loop!
     fclose('all')
     n=1; %initalize loop counter
     while true
+        %try
         if n==1 || mod(n,2e5)==1 %make a new log file
             log_file_str=sprintf('%slog_wm_%s.txt',log_dir,datestr(datetime('now'),'yyyymmddTHHMMSS'));
             if exist('flog','var')
@@ -130,7 +137,9 @@ elseif method_key==2 %feedback loop!
         if intialize_etl
             intialize_etl=false;
             %set the resonator to the middle of the range
-            solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"tune_resonator","parameters":{"setting":[%.10f]}}}',50),solstis);
+            pid_res.ctr_output=50;
+            pid_res.initalize=true;
+            solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"tune_resonator","parameters":{"setting":[%.10f]}}}',pid_res.ctr_output),solstis);
             %unlock res.
             solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"ecd_lock","parameters":{"operation":"off","report":"finished"}}}'),solstis);
             pause(0.1)
@@ -184,22 +193,20 @@ elseif method_key==2 %feedback loop!
             fprintf(flog,log_str);
 
             if isfield(stat_struct,'resonator_voltage') 
-            res_voltage=stat_struct.resonator_voltage;
-            %rescale the reading in volts to the control voltage in teh DAC % values
-            res_slow_dac=polyval([0.00000006007743282452 -0.00002630543053390512 0.00404787545023589396 0.27097607207749069280 3.44975464072533588578 ],res_voltage);
-            pid_res.integrator=res_slow_dac; %reset the integerator so there is no discontinuity
-            pid_res.ctr_output=res_slow_dac;
-            pid_res.time=posixtime(datetime('now')); %prevents over slew
-            pid_res.loop_time=1;
-            %set the DAC
-            solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"tune_resonator","parameters":{"setting":[%.10f]}}}',res_slow_dac),solstis)
-            %LOG this resonator set
-            log=[];
-            log.posix_time=posixtime(nowdt);
-            log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
-            log.tune_resonator=res_slow_dac;
-            log_str=sprintf('%s\n',jsonencode(log));
-            fprintf(flog,log_str);
+                res_voltage=stat_struct.resonator_voltage;
+                %rescale the reading in volts to the control voltage in teh DAC % values
+                pid_res.ctr_output=polyval([0.00000006007743282452 -0.00002630543053390512 0.00404787545023589396 0.27097607207749069280 3.44975464072533588578 ],res_voltage);
+                %reset the integerator so there is no discontinuity
+                pid_res.initalize=true;
+                %set the DAC
+                solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"tune_resonator","parameters":{"setting":[%.10f]}}}',pid_res.ctr_output),solstis)
+                %LOG this resonator set
+                log=[];
+                log.posix_time=posixtime(nowdt);
+                log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
+                log.tune_resonator=pid_res.ctr_output;
+                log_str=sprintf('%s\n',jsonencode(log));
+                fprintf(flog,log_str);
             else
                 intialize_res=true;
                 stat_read_raw
@@ -234,7 +241,7 @@ elseif method_key==2 %feedback loop!
         fprintf('RES set %05.3f err %+05.3f MHz Res %02.4f Feedback Freq %04.1f Int %+01.2f slew %+02.2f slewlim %1i \n',...
             [pid_res.setpt,pid_res.error,pid_res.ctr_output,1/pid_res.loop_time,pid_res.integrator,pid_res.slew,pid_res.aw_slew])
         fprintf(flog,log_str); 
-        %Send the resonator tune comand               
+        %Send the resonator tune comand
         query=sprintf('{"message":{"transmission_id":[2],"op":"tune_resonator","parameters":{"setting":[%.10f]}}}',pid_res.ctr_output);
         res_tune_out=solstis_query(query,solstis);
 
@@ -245,6 +252,12 @@ elseif method_key==2 %feedback loop!
         %  move the etalon if output is at the end of the operating range of resonator or the
         % error is much larger than the scan range of the resonator
         if pid_res.aw<1e-2  || abs(pid_res.error)>resonator_range
+                fprintf('etalon lock lauched because ')
+                if abs(pid_res.error)>resonator_range
+                    fprintf('current error val %.1f MHz\n',abs(pid_res.error))
+                elseif pid_res.aw<1e-2
+                    fprintf('pid anti windeup at %.3f \n',pid_res.aw)
+                end
                 pid_res.aw=1;
                 log=[];
                 log.posix_time=posixtime(nowdt);
@@ -253,7 +266,9 @@ elseif method_key==2 %feedback loop!
                 log_str=sprintf('%s\n',jsonencode(log));
                 fprintf(flog,log_str);
                 %set the resonator to the middle of the range
-                solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"tune_resonator","parameters":{"setting":[%.10f]}}}',50),solstis);
+                pid_res.ctr_output=50;
+                pid_res.initalize=true;
+                solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"tune_resonator","parameters":{"setting":[%.10f]}}}',pid_res.ctr_output),solstis);
                 %unlock res.
                 solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"ecd_lock","parameters":{"operation":"off","report":"finished"}}}'),solstis);
                 pause(0.1)
@@ -279,7 +294,7 @@ elseif method_key==2 %feedback loop!
                 pid_etalon.aw=1;
                 pid_etalon.loop_time=1;
                 %set the threshold to lock the etalon
-                etl_lock_thresh=1000;%MHZ tolerance about half the step size
+
                 feedback_etalon=true;
                 brute_search_etalon=false;
                 brute_search_step_size=5;
@@ -323,7 +338,7 @@ elseif method_key==2 %feedback loop!
                         end
                         %return %end the script if hitting the walls of the etalon tune
                     end
-                    pause(0.08);
+                    pause(0.2);
                 end %etalon_search 
                 %if that falis we just do a brute scan across all the etalon values
                 reduce_step_size=false;
@@ -362,9 +377,6 @@ elseif method_key==2 %feedback loop!
                     fprintf('ETALON set %05.3f err %+09.3f MHz Etl %02.4f step size %02.2f\n',...
                     [pid_etalon.setpt,pid_etalon.error,pid_etalon.ctr_output,brute_search_step_size])
 
-
-
-
                     if abs(pid_etalon.error)<etl_lock_thresh 
                             brute_search_etalon=false;
                             fprintf('Brute search on etalon SUCESS\n')
@@ -385,6 +397,7 @@ elseif method_key==2 %feedback loop!
                 log.search_etalon.stage='lock';
                 log_str=sprintf('%s\n',jsonencode(log));
                 fprintf(flog,log_str);
+                realign_now=true;
                 intialize_res=true;
         end
         %measures the blue light
@@ -414,99 +427,125 @@ elseif method_key==2 %feedback loop!
         end 
 
         %check the status of the laser ECD output and if bad relock
-        if time_last_res_check+intv_res_check<pid_res.time && abs(pid_res.error)<ecd_relock_err_thresh
-            time_last_res_check=pid_res.time; %change the last check time
+        % do not run if laser is realiangning as relocking inhibits alingment
+        if time_last_res_check+intv_res_check<pid_res.time &&...
+                abs(pid_res.error)<ecd_relock_err_thresh  && ...
+                ~(pid_res.aw<1e-2  || abs(pid_res.error)>resonator_range)
+            
             unlock=true; %go through check at least once
             res_lock_attempts=0;
-            while unlock  
-                %'{"message":{"transmission_id":[9714],"op":"ecd_lock_f_r","parameters":{"report":[0]}}}'
-                pause(0.1);
-                stat_read_raw=solstis_query('{"message":{"transmission_id":[2],"op":"get_status"}}',solstis); %TO DO NEED TO GRACEFULLY HANDLE NO OUTPUT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                stat_struct=jsondecode(stat_read_raw);
-                stat_struct=stat_struct.message.parameters;
-                if isfield(stat_struct,'etalon_lock')
-                  etl_status=stat_struct.etalon_lock;
-                    %LOG this status read
-                    nowdt=datetime('now');
-                    log=[];
-                    log.posix_time=posixtime(nowdt);
-                    log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
-                    log.get_status=stat_struct;
-                    log_str=sprintf('%s\n',jsonencode(log));
-                    fprintf(flog,log_str);
-                else
-                    stat_read_raw
-                    solstis_clearBuffer();
-                end
-
-                %read and log all the adc
-                response=jsondecode(solstis_query('{"message":{"transmission_id":[2],"op":"read_all_adc"}}',solstis));
-                log=[];
-                log.posix_time=posixtime(nowdt);
-                log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
-                log.read_all_adc=response.message.parameters;
-                log_str=sprintf('%s\n',jsonencode(log));
-                fprintf(flog,log_str);
-                if isfield(response.message.parameters,'value10')
-                    ecd_voltage=response.message.parameters.value10;
-                else
-                    ecd_voltage=nan;
-                     solstis_clearBuffer();
-                end
-                if ~isequal(etl_status,'on')
-                    query=sprintf('{"message":{"transmission_id":[2],"op":"etalon_lock","parameters":{"operation":"on","report":"finished"}}}');
-                    solstis_query(query,solstis);
-                    pause(0.1)
-                    solstis_getResponse(solstis);
-                    pause(0.5)
-
-                     log=[];
-                    log.posix_time=posixtime(nowdt);
-                    log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
-                    log.etl_lock='on';
-                    log_str=sprintf('%s\n',jsonencode(log));
-                    fprintf(flog,log_str);
-
-                end
-                if ecd_voltage<ecd_relock_pd_thresh
-                    res_lock_attempts=res_lock_attempts+1;
-                    if res_lock_attempts>4 %try a random postion to relock the resonator
-                        solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"tune_resonator","parameters":{"setting":[%.10f]}}}',round(rand(1)*100)),solstis);
-                        pause(1)
-                        fprintf('trying relock of ECD at random location !!!!!!!!!!!!!!\n')
+            if time_last_beam_algin+wait_for_align_before_lock>pid_res.time
+                %shedule relock for when the beam alingment is done
+                time_last_res_check=time_last_beam_algin+wait_for_align_before_lock-intv_res_check; %change the last check time
+            else
+                time_last_res_check=pid_res.time; %change the last check time
+                while unlock  
+                    %'{"message":{"transmission_id":[9714],"op":"ecd_lock_f_r","parameters":{"report":[0]}}}'
+                    pause(0.1);
+                    stat_read_raw=solstis_query('{"message":{"transmission_id":[2],"op":"get_status"}}',solstis);
+                    pause(0.1);
+                    stat_read_raw=solstis_query('{"message":{"transmission_id":[2],"op":"get_status"}}',solstis);
+                    stat_struct=jsondecode(stat_read_raw);
+                    stat_struct=stat_struct.message.parameters;
+                    %handle if there is no output
+                    if isfield(stat_struct,'etalon_lock')
+                        etl_status=stat_struct.etalon_lock;
+                        %LOG this status read
+                        nowdt=datetime('now');
+                        log=[];
+                        log.posix_time=posixtime(nowdt);
+                        log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
+                        log.get_status=stat_struct;
+                        log_str=sprintf('%s\n',jsonencode(log));
+                        fprintf(flog,log_str);
+                    else
+                        stat_read_raw
+                        solstis_clearBuffer();
+                        etl_status=nan;
                     end
-                    fprintf('\n need relock... unlocking...\n')
-                    query=sprintf('{"message":{"transmission_id":[2],"op":"ecd_lock","parameters":{"operation":"off","report":"finished"}}}');
-                    solstis_query(query,solstis);
 
-
+                    %read and log all the adc
+                    response=jsondecode(solstis_query('{"message":{"transmission_id":[2],"op":"read_all_adc"}}',solstis));
                     log=[];
                     log.posix_time=posixtime(nowdt);
                     log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
-                    log.ecd_lock='off';
+                    log.read_all_adc=response.message.parameters;
                     log_str=sprintf('%s\n',jsonencode(log));
                     fprintf(flog,log_str);
-                    pause(0.1)
-                    solstis_getResponse(solstis);
-                    pause(0.5)
-                    query=sprintf('{"message":{"transmission_id":[2],"op":"ecd_lock","parameters":{"operation":"on","report":"finished"}}}');
-                    solstis_query(query,solstis);
+                    if isfield(response.message.parameters,'value10')
+                        ecd_voltage=response.message.parameters.value10;
+                    else
+                        ecd_voltage=nan;
+                         solstis_clearBuffer();
+                    end
+                    if ~isequal(etl_status,'on')
+                        query=sprintf('{"message":{"transmission_id":[2],"op":"etalon_lock","parameters":{"operation":"on","report":"finished"}}}');
+                        solstis_query(query,solstis);
+                        pause(2)
+                        solstis_getResponse(solstis);
+                        pause(0.5)
 
-                    log=[];
-                    log.posix_time=posixtime(nowdt);
-                    log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
-                    log.ecd_lock='on';
-                    log_str=sprintf('%s\n',jsonencode(log));
-                    fprintf(flog,log_str);
-                    pause(2)
+                         log=[];
+                        log.posix_time=posixtime(nowdt);
+                        log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
+                        log.etl_lock='on';
+                        log_str=sprintf('%s\n',jsonencode(log));
+                        fprintf(flog,log_str);
 
-                    solstis_getResponse(solstis);
-                    fprintf('\nlocked...\n')  
-                    pause(1)
-                    intialize_res=true;
-                    pid_res.time=posixtime(datetime('now')); %prevents over slew
-                else
-                    unlock=false;
+                    end
+%                     if time_last_beam_algin+5>pid_res.time
+%                         fprintf('waiting for beam alignment\n')
+%                         pause(5)
+%                         %after waiting go and check that it hasnt managed to lock in that time
+%                         %this skips the relocking loop
+%                         ecd_voltage=nan;
+%                     end      
+                    if ecd_voltage<ecd_relock_pd_thresh
+                        res_lock_attempts=res_lock_attempts+1;
+                        %should replace with query to the laser
+                        if res_lock_attempts>6
+                            unlock=false;
+                            realign_now=true;
+                        elseif res_lock_attempts>2 %try a random postion to relock the resonator
+                            pid_res.ctr_output=min(95,max(5,pid_res.ctr_output+(rand(1)*2-1)*10));
+                            pid_res.initalize=true;
+                            solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"tune_resonator","parameters":{"setting":[%.10f]}}}',pid_res.ctr_output),solstis);
+                            pause(1)
+                            fprintf('trying relock of ECD at random location !!!!!!!!!!!!!!\n')
+                        end
+                        fprintf('\n need relock... unlocking...\n')
+                        query=sprintf('{"message":{"transmission_id":[2],"op":"ecd_lock","parameters":{"operation":"off","report":"finished"}}}');
+                        solstis_query(query,solstis);
+                        log=[];
+                        log.posix_time=posixtime(nowdt);
+                        log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
+                        log.ecd_lock='off';
+                        log_str=sprintf('%s\n',jsonencode(log));
+                        fprintf(flog,log_str);
+                        pause(0.1)
+                        solstis_getResponse(solstis);
+                        pause(0.5)
+                        query=sprintf('{"message":{"transmission_id":[2],"op":"ecd_lock","parameters":{"operation":"on","report":"finished"}}}');
+                        solstis_query(query,solstis);
+
+                        log=[];
+                        log.posix_time=posixtime(nowdt);
+                        log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
+                        log.ecd_lock='on';
+                        log_str=sprintf('%s\n',jsonencode(log));
+                        fprintf(flog,log_str);
+                        pause(2)
+
+                        solstis_getResponse(solstis);
+                        fprintf('\nlocked...\n')  
+                        pause(2)
+                        %query the status to force an update
+                        solstis_query('{"message":{"transmission_id":[2],"op":"get_status"}}',solstis);
+                        pause(0.1)
+                        %intialize_res=true;
+                    else
+                        unlock=false;
+                    end
                 end
             end
         end%check the status of the laser ECD output
@@ -518,21 +557,23 @@ elseif method_key==2 %feedback loop!
         time_2=posixtime(datetime('now'));
         loop_time=time_2-time_1;
         time_1=time_2;
+        
+%     catch me
+%         log=[];
+%         log.posix_time=posixtime(nowdt);
+%         log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
+%         log.feedback_error=getReport( me, 'extended');
+%         log_str=sprintf('%s\n',jsonencode(log));
+%         fprintf(flog,log_str);
+%         warning('!!!!!!!!!!!!!FEEDBACK ERROR restarting from the top!!!!!!!!!!!!!!\n')
+%         warning(['err msg',log.feedback_error])
+%     end    
+        
     end%feedback loop
 
     solstis = instrfind('tag','solstis');
     delete(solstis)
     ret=0;
-    catch me
-        log=[];
-        log.posix_time=posixtime(nowdt);
-        log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
-        log.feedback_error=getReport( me, 'extended');
-        log_str=sprintf('%s\n',jsonencode(log));
-        fprintf(flog,log_str);
-        warning('!!!!!!!!!!!!!FEEDBACK ERROR restarting from the top!!!!!!!!!!!!!!\n')
-        warning(['err msg',log.feedback_error])
-    end
 else
     ret = 0;
 end
