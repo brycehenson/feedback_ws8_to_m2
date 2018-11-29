@@ -1,0 +1,20 @@
+just jotting down some ideas for how the code shoudl operate
+
+- pass in the user options
+- initalize
+  - get the current wavelength and use this as the set point
+  - get the current resonator voltage and convert to control
+  - set the resonator to this (imperfectly matched) control value
+  - initalize the PID
+- main loop
+  - get the current wavemeter value
+  - feed this to the pid function returning a resonator value
+  - set the resonator to this value
+  
+  - auto align
+    - IF the last time it was aligned was a long time ago
+	- OR the set point has moved a lot from the last time it was aligned
+	- AND the error is small enough
+      - turn on align
+      - 	  
+  
