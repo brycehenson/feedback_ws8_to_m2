@@ -1,28 +1,30 @@
 
 
 %manualy scan the set pt
-%
-%freq=362848466.40;
-%freq=362871075.28;
-%freq=362865454.07;
-%freq=362853600;
 
-%freq=362900000.00
-freq=362865454.07; %TO at l/4 246deg
-%freq=362760000
-freq=362868100-15000;
-%freq=362760000
-freq_cen=362868200;
-freq_delta=linspace(-10000,10000,1e3);
+
+freq_cen=364507238.417;
+freq_cen=364507091.65;
+freq_cen=364503080.351-147.8;
+freq_range=3;
+steps=5;
+step_time=0.3;
+extra_pause=0;
+%freq_delta=linspace(-freq_range,freq_range,steps);
+freq_delta=[0,freq_range];
 ii=1;
 while true
     freq=freq_cen+freq_delta(ii);
-    fprintf('probe beam set freq %f MHz \n',freq)
+    %fprintf('probe beam set freq %f MHz \n',freq)
+    fprintf('probe beam set freq %f MHz \n',freq_delta(ii))
     t = tcpip('0.0.0.0', 33333, 'NetworkRole', 'server');
     fopen(t)
     fwrite(t,freq,'double')
     fclose(t)
-    pause(10)
+    pause(step_time)
+    if ii==1
+        pause(extra_pause)
+    end
     ii=ii+1;
     if ii>numel(freq_delta)
         ii=1;

@@ -10,7 +10,7 @@ dac_vals=linspace(1,99,1000);
 dac_vals=dac_vals(randperm(numel(dac_vals)));
 voltage=NaN*dac_vals;
 
-sfigure(1)
+figure(1)
 clf
 
 for n=1:numel(dac_vals)
@@ -25,7 +25,7 @@ status=reply.message.parameters;
 
 voltage(n)=status.etalon_voltage;
 
-sfigure(1);
+figure(1);
 p=polyfit(voltage(~isnan(voltage)),dac_vals(~isnan(voltage)),4);
 plot(voltage,dac_vals,'k+')
 hold on

@@ -41,7 +41,7 @@ solstis_getResponse(solstis);
 pause(0.01)
 freq(n)=wmhandle.GetFreq(1);
 
-sfigure(1);
+figure(1);
 plot(dac_vals,freq,'k-')
 end
 %we see that the laser freq looks like steps that change in ~Ghz increments
