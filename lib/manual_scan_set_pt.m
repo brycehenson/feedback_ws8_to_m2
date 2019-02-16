@@ -3,15 +3,14 @@
 %manualy scan the set pt
 
 
-freq_cen=364507238.417;
-freq_cen=364507091.65;
-freq_cen=364503080.351-147.8;
+%freq_cen=364507238.417;
+%freq_cen=364507091.65;
+freq_cen=364503080.297;
 freq_range=3;
-steps=5;
-step_time=0.3;
+steps=50;
+step_time=0.1;
 extra_pause=0;
-%freq_delta=linspace(-freq_range,freq_range,steps);
-freq_delta=[0,freq_range];
+freq_delta=linspace(-freq_range,freq_range,steps);
 ii=1;
 while true
     freq=freq_cen+freq_delta(ii);

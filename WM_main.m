@@ -6,16 +6,17 @@ createpool=true;
 if isprop(mypool,'NumWorkers')
     if mypool.NumWorkers==2 
         createpool=false;
-end
+    end
 end
 % delete(gcp('nocreate'))
 % myCluster = parcluster('local')
 % delete(myCluster.Jobs);
+
 % myCluster.NumWorkers=2;
 % myCluster.NumThreads=2;
 
 if createpool
-parpool('local',2)
+    parpool('local',2)
 end
 
 warning off instrument:fscanf:unsuccessfulRead
@@ -30,8 +31,8 @@ warning off instrument:fscanf:unsuccessfulRead
 %Running locally, the WM feedback loop runs for 62+-11 ms (16Hz)
 
 spmd
-    %r = WM_control_no_blue(labindex);
-    r = WM_control(labindex);
+   %r = WM_control_no_blue(labindex);
+   r = WM_control(labindex);
 end
 
 

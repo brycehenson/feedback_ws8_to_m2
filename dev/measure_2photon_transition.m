@@ -2,11 +2,12 @@
 hyperfine_transision=4; %F=3 or 4
 current_gain=2e7; %V/A
 
-wavemeter_offset=-145.2;
-freq_range=8; %the total range to scan over (from -ve freq_range/2 to +ve freq_range/2)
-delt_freq=0.09; %MHz
-settle_time=0.3;
-volt_aq_time=0.5;
+wavemeter_offset=0;%-150.4;%-145.2;
+%the total range to scan over (from -ve freq_range/2 to +ve freq_range/2)
+freq_range=8;%60 for SAS;%8 for 2photon 
+delt_freq=0.2; %MHz
+settle_time=0.1;%0.3;
+volt_aq_time=0.3;
 extra_pause_end=1;
 extra_pause_start=1;
 plot_interval=1;
@@ -14,25 +15,109 @@ plot_interval=1;
 log_dir='Y:\TDC_user\ProgramFiles\my_read_tdc_gui_v1.0.1\dld_output\';
 new_log_interval=60*60*1;
 
+transition_name='cs_2p_6SF3_8SF3';
 
+%'cs_2p_6SF3_8SF3' filter at 822.5 pmt voltage 1160
+%'cs_2p_6SF4_8SF4'
+%'cs_6SF3_6PF2co3' solsTIS filter at 852.3 pmt voltage 1250
+%'cs_6SF4_6PF4co5' solsTIS filter at 852.3
+%TO filter 826.1
 %%
 fclose('all')
 clear('flog')
+
+folder = fileparts(which(mfilename));
+folder=strsplit(folder,filesep); %go up a directory
+folder=strjoin(folder(1:end-1),filesep);
+% Add that folder plus all subfolders to the path.
+addpath(genpath(folder));
+
 hebec_constants
 
 nowt=posixtime(datetime('now'));
-%6S–8S  http://dx.doi.org/10.1364/OL.38.003186 %822.4nm
-%for other transtion see
-%https://doi.org/10.1088/1674-1056/21/11/113701  
-%https://doi.org/10.1364/OL.19.001474 %852.3,883
-%https://doi.org/10.1143/JPSJ.74.2487 885.4
-if hyperfine_transision==3
-    transition_freq=364507238.417;
-elseif hyperfine_transision==4
-    transition_freq=364503080.351;
-else
-    error('wrong option')
-end
+
+
+%  %852.3 red single photon 
+
+
+%6s->6P ( D2) single photon transtions cesium ~852nm 
+%solsTIS filter at 852.3 %pmt voltage 1250
+%REF https://steck.us/alkalidata/cesiumnumbers.1.6.pdf
+% https://www.sacher-laser.com/applications/overview/absorption_spectroscopy/caesium_d2.html line
+% identification
+% other reading https://doi.org/10.1364/OL.19.001474
+%https://doi.org/10.1143/JPSJ.74.2487 %883nm transtion
+%6^{2}S_{1/2} F=3-> 6^{2}S_{3/2} F=[2,3,4,5]
+f_cs_6SF3_6PF2=351725718.50+5170.855370625-339.64; %MHZ
+f_cs_6SF3_6PF3=351725718.50+5170.855370625-188.44; %MHZ
+f_cs_6SF3_6PF4=351725718.50+5170.855370625+12.815; %MHZ
+f_cs_6SF3_6PF5=351725718.50+5170.855370625+263.81; %MHZ
+f_cs_6SF3_6PF2co3=(f_cs_6SF3_6PF2+f_cs_6SF3_6PF3)/2;
+f_cs_6SF3_6PF3co4=(f_cs_6SF3_6PF3+f_cs_6SF3_6PF4)/2;
+f_cs_6SF3_6PF4co5=(f_cs_6SF3_6PF4+f_cs_6SF3_6PF5)/2;
+%f_cs_6SF3_6PF2co3 seems like the best option here (stronger than f_cs_6SF4_6PF4co5)
+
+%6^{2}S_{1/2} F=4->6^{2}S_{1/2} F=[2,3,4,5]
+f_cs_6SF4_6PF2=351725718.50-4021.776399375-339.64; %MHZ
+f_cs_6SF4_6PF3=351725718.50-4021.776399375-188.44; %MHZ
+f_cs_6SF4_6PF4=351725718.50-4021.776399375+12.815; %MHZ
+f_cs_6SF4_6PF5=351725718.50-4021.776399375+263.81; %MHZ
+f_cs_6SF4_6PF3co4=(f_cs_6SF4_6PF3+f_cs_6SF4_6PF4)/2;
+f_cs_6SF4_6PF4co5=(f_cs_6SF4_6PF4+f_cs_6SF4_6PF5)/2;
+%f_cs_6SF4_6PF4co5 is the best option, the rest are very weak and the F=3co5 is vclose to F=4
+
+
+
+%6S–8S two photon cesium ~822.4nm 2photon 
+%pmt voltage 1160 %filter at 822.5
+%Ref https://doi.org/10.1088/1674-1056/21/11/113701  
+% older works
+% https://doi.org/10.1016/S0030-4018(98)00662-2 (1999)
+% https://doi.org/10.1364/OL.32.000701 (2007)
+%6^{2}S_{1/2} F=[3,4] -> 8^{2}S_{1/2} F=[3,4]
+f_cs_2p_6SF3_8SF3=364507238.363;
+f_cs_2p_6SF4_8SF4=364503080.297;
+%forbidden 2 photon transtions, have not found any references, just a guess
+%have not been able to observe these
+f_cs_2p_6SF3_8SF4=f_cs_2p_6SF4_8SF4+4021.776399375+5170.85537062;
+f_cs_2p_6SF4_8SF3=f_cs_2p_6SF4_8SF4-4021.776399375-5170.85537062;
+
+
+%6S–6D_{3/2} two photon cesium ~885.4nm 2photon 
+% problem is that fluro is at 919 & 852nm and may be very hard to see with this pmt
+% filter at 885.4
+% ref https://doi.org/10.1364/OL.43.001954
+%6^{2}S_{1/2} F=[4,3] -> 6^{2}D_{3/2} F=5
+f_cs_2p_6SF4_6DF5=338595897.205;
+f_cs_2p_6SF3_6DF5=338600493.509;
+%using the measured hyperfine intervals, unsure why there is a diagreement between the table 2 and
+%the values below it
+f_cs_2p_6SF4_6DF4=f_cs_2p_6SF4_6DF5-81.661/2;
+f_cs_2p_6SF4_6DF3=f_cs_2p_6SF4_6DF4-65.336/2;
+f_cs_2p_6SF4_6DF3=f_cs_2p_6SF4_6DF3-48.859/2;
+
+f_cs_2p_6SF3_6DF4=f_cs_2p_6SF3_6DF5-81.661/2;
+f_cs_2p_6SF3_6DF3=f_cs_2p_6SF3_6DF4-65.336/2;6
+f_cs_2p_6SF3_6DF3=f_cs_2p_6SF3_6DF3-48.859/2;
+
+
+%other 2 photon
+%http://www.phys.nthu.edu.tw/seminar/AMO/2012F/Tsing.pdf
+%https://doi.org/10.1364/OL.36.000076
+%822 6S_{1/2} -> 6D_{3/2} 885.4
+%822 6S_{1/2} -> 6D_{5/2} 883.7
+
+
+switch transition_name
+    case 'cs_2p_6SF3_8SF3'
+        transition_freq=f_cs_2p_6SF3_8SF3;
+    case 'cs_2p_6SF4_8SF4'
+        transition_freq=f_cs_2p_6SF4_8SF4;
+    case 'cs_6SF3_6PF2co3'
+        transition_freq=f_cs_6SF3_6PF2co3;
+    case 'cs_6SF4_6PF4co5'
+        transition_freq=f_cs_6SF4_6PF4co5;
+end  
 
 freq_cen=transition_freq;
 freq_cen=freq_cen+wavemeter_offset; 
@@ -51,21 +136,21 @@ if sum(dev_idx)~=1
 end
 dev_idx=find(dev_idx,1);
 connected_dev(dev_idx)
-s = daq.createSession('ni');
-ch=addAnalogInputChannel(s,connected_dev(dev_idx).ID,4,'Voltage');
+daq_pmt = daq.createSession('ni');
+ch=addAnalogInputChannel(daq_pmt,connected_dev(dev_idx).ID,4,'Voltage');
 % the sampling rate should be set so that it is much slower than the 200us of the transimpedance
 % amplifier % 3.7khz low pass filter, 0.5khz is ok
-s.Rate = 500;
-s.DurationInSeconds=volt_aq_time;
+daq_pmt.Rate = 500;
+daq_pmt.DurationInSeconds=volt_aq_time;
 ch.TerminalConfig='SingleEnded';
-s.inputSingleScan;
+daq_pmt.inputSingleScan;
 
 %% Initalize plots
 figure(1)
 set(gcf,'color','w')
 clf
 subplot(2,2,1)
-[voltage,time] = s.startForeground;
+[voltage,time] = daq_pmt.startForeground;
 plot_volt_aq=plot(time,voltage,'k.-','LineWidth',1.5,'MarkerSize',20);
 title('measuring pmt current')
 xlabel('time (s)')
@@ -76,14 +161,14 @@ plot_scan_res_mean=plot([nan],[nan],'k.-','LineWidth',1.5,'MarkerSize',20);
 title('scan response')
 xlabel('Probe Set Point-Transition Freq-WM Offset (MHz)')
 ylabel('Mean PMT Current (nA)')
-xlim([-1,1]*freq_range)
+xlim([-1,1]*freq_range/2)
 
 subplot(2,2,4)
 plot_scan_res_std=plot([nan],[nan],'k.-','LineWidth',1.5,'MarkerSize',20);
 title('scan response')
 xlabel('Probe Set Point-Transition Freq-WM Offset (MHz)')
 ylabel('STD PMT Current (nA)')
-xlim([-1,1]*freq_range)
+xlim([-1,1]*freq_range/2)
 plot_scan_res_fit_mean=plot([],[],'r');
 plot_scan_res_fit_std=plot([],[],'r');
 
@@ -108,8 +193,8 @@ set(plot_scan_res_mean,'xdata', freq_delta,'ydata', time_freq_response(:,3));
 
 
 current_gain_disp=current_gain/1e9;
-s.inputSingleScan; %initalize
-[voltage_aq,time] = s.startForeground;
+daq_pmt.inputSingleScan; %initalize
+[voltage_aq,time] = daq_pmt.startForeground;
 
 loz3fun_offset = @(b,x) b(1).*((b(2)/2)^2)./((x-b(3)).^2+(b(2)/2)^2) + b(4); %lorentzian
 loz3fun_offset_grad = @(b,x) b(1).*((b(2)/2)^2)./((x-b(3)).^2+(b(2)/2)^2) + b(4)+b(5).*x; %lorentzian
@@ -145,8 +230,9 @@ while true
             fprintf(flog,log_str);
             fclose(flog);
         end
-        flog=fopen(log_file_str,'A');      
+            
     end
+    flog=fopen(log_file_str,'a'); 
     fprintf('probe freq scan %04u:%04u',numel(freq_delta),0);
     for jj=1: numel(freq_delta)
         set_freq=freq_cen+freq_delta(jj);
@@ -162,7 +248,7 @@ while true
             pause(extra_pause_start)
         end
 
-        [voltage_aq,time] = s.startForeground;
+        [voltage_aq,time] = daq_pmt.startForeground;
         time_freq_response(jj,1)=posixtime(datetime('now')); 
         if jj~=1
              time_freq_response(jj,1)= time_freq_response(jj,1)- time_freq_response(1,1); %differential encoding of the scan time
@@ -179,7 +265,7 @@ while true
         fprintf('\b\b\b\b%04u',jj);
     end
     fprintf('...Done\n');
-
+%%
     drawnow
     opts = statset('MaxIter',1e3);
     %opts.RobustWgtFun = 'welsch' ; %a bit of robust fitting
@@ -258,6 +344,8 @@ while true
         fit_mean.Coefficients.SE(3),freq_cen+fit_std.Coefficients.Estimate(2)-transition_freq,fit_std.Coefficients.SE(2)]];
     fprintf('Scan found estimated wavemeter shift as %f±%f\n',freq_fits(end,2),freq_fits(end,3));
     photon_rate=abs(fit_mean.Coefficients.Estimate(1)*fit_std.Coefficients.Estimate(3));
+    fprintf('Probe Current Peak Amp %.4g A \n',fit_mean.Coefficients.Estimate(1)/current_gain);
+    fprintf('Peak Width %.4g MHZ\n', fit_mean.Coefficients.Estimate(2))
     fprintf('Estimated Peak Probe Photons %.1f s^-1 \n',photon_rate);
     fprintf('Estimated PMT Multipication %.1g\n e-·(photon)^-1\n',1/(current_gain*fit_std.Coefficients.Estimate(3)*const.electron));
     
@@ -279,7 +367,9 @@ while true
     log.parameters.pmt_voltage_std=time_freq_response(:,4);
     
     log.parameters.current_gain=current_gain;
-    log.parameters.freq_offset=freq_cen;
+    log.parameters.transition_name=transition_name;
+    log.parameters.transition_freq=transition_freq;
+    log.parameters.freq_center=freq_cen;
     log.parameters.est_wm_offset=freq_cen+fit_mean.Coefficients.Estimate(3)-transition_freq;
 
     log.parameters.fit_to_mean.coeff_est=fit_mean.Coefficients.Estimate;
@@ -295,9 +385,13 @@ while true
     pause(extra_pause_end)
     
     %set the center of the next scan to the fit from the previous
-    freq_cen=freq_cen+fit_mean.Coefficients.Estimate(3);
+    if fit_mean.Coefficients.Estimate(3)<freq_range/2
+        freq_cen=freq_cen+fit_mean.Coefficients.Estimate(3);
+    end
     time_freq_response=nan(size(freq_delta,1),3);
     ii=ii+1;
+    
+    fclose(flog); 
 %     catch e %e is an MException struct
 %         
 %         log=[];

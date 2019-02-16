@@ -20,16 +20,16 @@ if sum(dev_idx)~=1
 end
 dev_idx=find(dev_idx,1);
 connected_dev(dev_idx)
-s = daq.createSession('ni');
-ch=addAnalogInputChannel(s,connected_dev(dev_idx).ID,4,'Voltage');
-s.Rate = 10000;
-voltage = s.inputSingleScan
+daq_pmt = daq.createSession('ni');
+ch=addAnalogInputChannel(daq_pmt,connected_dev(dev_idx).ID,4,'Voltage');
+daq_pmt.Rate = 10000;
+voltage = daq_pmt.inputSingleScan
 ch.TerminalConfig='SingleEnded'
 
 %%
 figure(1)
 clf
-[voltage,time] = s.startForeground;
+[voltage,time] = daq_pmt.startForeground;
 plot(time,voltage)
 
 
@@ -39,18 +39,18 @@ voltage=[];
 time=[];
 start_time=posixtime(datetime('now'));
 time=[time,posixtime(datetime('now'))-start_time];
-voltage=[voltage,s.inputSingleScan/current_gain];
+voltage=[voltage,daq_pmt.inputSingleScan/current_gain];
 figure(1)
 h=plot(time, voltage,'k.-','LineWidth',1.5,'MarkerSize',20);
 set(gcf,'color','w')
 xlabel('time (s)')
-ylabel('pmt currentA')
+ylabel('pmt current nA')
 
 
 plot_duration=120;
 % now get into the loop
 while true
-    voltage_now=s.inputSingleScan/current_gain;
+    voltage_now=daq_pmt.inputSingleScan/current_gain;
     time_now=posixtime(datetime('now'))-start_time;
 if time(1)>plot_duration
     time=circshift(time,1);
@@ -67,3 +67,5 @@ set(gca,'xlim', time([end,1]));
 drawnow
 
 end
+%%
+delete(daq_pmt)
