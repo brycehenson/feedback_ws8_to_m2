@@ -579,14 +579,22 @@ elseif method_key==2 %feedback loop!
                 time_1=time_2;  
             end%feedback loop
         catch me
-            log=[];
-            log.posix_time=posixtime(nowdt);
-            log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
-            log.feedback_error=getReport( me, 'extended');
-            log_str=sprintf('%s\n',jsonencode(log));
-            fprintf(flog,log_str);
-            warning('!!!!!!!!!!!!!FEEDBACK ERROR restarting from the top!!!!!!!!!!!!!!\n')
-            warning(['err msg',log.feedback_error])
+            fprintf('!!!!!!!!!!!!!               WARNING                !!!!!!!!!!!!!!\n')
+            fprintf('!!!!!!!!!!!!!FEEDBACK ERROR restarting from the top!!!!!!!!!!!!!!\n')
+            warning(getReport( me, 'extended'))
+            try %error prrof the error reporting
+                if flog>2 %if the log file identifier exists
+                    log=[];
+                    log.posix_time=posixtime(nowdt);
+                    log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
+                    log.feedback_error=getReport( me, 'extended');
+                    log_str=sprintf('%s\n',jsonencode(log));
+                    fprintf(flog,log_str);
+                else
+                    fprintf('warning there was no log file to put the error log in \n')
+                end
+            catch
+            end
         end %try statement
     end %error catching loop
     solstis = instrfind('tag','solstis');

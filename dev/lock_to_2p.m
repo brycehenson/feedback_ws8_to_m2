@@ -58,7 +58,7 @@ f_cs_2p_6SF4_8SF4=364503080.297;
 wavemeter_offset=-3;%-151.19;%-145.2;
 transition_freq=f_cs_2p_6SF4_8SF4;
 scan_center_freq=transition_freq+wavemeter_offset;
-scan_freq_range=6;
+scan_freq_range=5;
 scan_delt_freq=0.25; %MHz
 freq_vec=scan_center_freq+linspace(-scan_freq_range/2,scan_freq_range/2,scan_freq_range/scan_delt_freq)';
 scan_step_time=0.2;
@@ -499,6 +499,7 @@ fprintf('Scan found estimated wavemeter shift as %.2f±%.2f MHz \n',...
 
 subplot(3,1,2)
 plot(meas_freq_offset,deriv,'k.')
+ylabel('error signal')
 
  %%
  freq_to_res=@(x)  interp1(meas_freq_offset,scan_dat.res_set./scan_dat.meas_num,x);

@@ -17,7 +17,7 @@ new_log_interval=60*60*1;
 
 transition_name='cs_2p_6SF3_8SF3';
 
-%'cs_2p_6SF3_8SF3' filter at 822.5 pmt voltage 1160
+%'cs_2p_6SF3_8SF3' filter at 822.2 pmt voltage 1160
 %'cs_2p_6SF4_8SF4'
 %'cs_6SF3_6PF2co3' solsTIS filter at 852.3 pmt voltage 1250
 %'cs_6SF4_6PF4co5' solsTIS filter at 852.3

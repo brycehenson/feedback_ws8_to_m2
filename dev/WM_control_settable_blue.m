@@ -1,4 +1,4 @@
-function ret = WM_control(method_key,useblue)
+function ret = WM_control_settable_blue(method_key,useblue)
 %WM_control- runs feedback between measurments from ws8 wavemeter and a m2 laser
 %Uses software in the loop feedback of the optical frequency of a M Squared SolsTiS Laser (with doubler) to a WS8 wavemeter.
 %Checks if the laser has unlocked either the doubler or the Ti:Saf and relocks.
@@ -73,16 +73,12 @@ elseif method_key==2 %feedback loop!
     wait_for_align_before_lock=10; %wait for the alignment to be done before trying to lock the laser
     align_setpoint_change=5e3; %realign if the setpoint changes by this much
     align_err_thresh=50; %how close the laser needs to be before realigning
-    resonator_range=20000; %thershold in mhz before it considers doing an etalon search
+    resonator_range=10000; %threshold in mhz before it considers doing an etalon search
     intv_beam_align=60*10; %how often to do an auto realign (s)
     intv_blue_meas=1;           %how often to measure the blue light
     ecd_relock_pd_thresh=0.2;%0.65 %min power before relock attempt
-    ecd_relock_err_thresh=200; %MHzhow close to the set point does the laser have to be to bother relocking the ECD
+    ecd_relock_err_thresh=200; %MHz how close to the set point does the laser have to be to bother relocking the ECD
     
-    pid_res.setpt=wmhandle.GetFreq(1);%setpt; %max val set pt
-    if isnan(pid_res.setpt)
-        error('probe freq setpoint is nan')
-    end
     pid_res.k_int=-2e-2;
     pid_res.k_prop=-5e-4;
     pid_res.outlims=[5,95];
@@ -107,6 +103,12 @@ elseif method_key==2 %feedback loop!
     pid_etalon.aw_thresh_range=5;
     pid_etalon.initalize=true;
     
+    pid_res.setpt=wmhandle.GetFreq(1);%setpt; %max val set pt
+    if isnan(pid_res.setpt)
+        error('probe freq setpoint is nan')
+    end
+
+    
     
     etalon_dac_poly=[0.000000039,-0.000018422,0.511559159,-0.078604797];
 
@@ -130,7 +132,7 @@ elseif method_key==2 %feedback loop!
     n=1; %initalize loop counter
     while true
         try
-            if n==1 || mod(n,2e5)==1 %make a new log file
+            if n==1 || mod(n,5e3)==1 %make a new log file
                 log_file_str=sprintf('%slog_wm_%s.txt',log_dir,datestr(datetime('now'),'yyyymmddTHHMMSS'));
                 if exist('flog','var')
                     log=[];
@@ -154,11 +156,11 @@ elseif method_key==2 %feedback loop!
                 %unlock res.
                 
                 
-%                 if useblue% % ECD QUERY 
-%                     solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"ecd_lock","parameters":{"operation":"off","report":"finished"}}}'),solstis);
-%                     pause(0.1)
-%                     solstis_getResponse(solstis); %wait unitll it says its done with the res. unlock
-%                 end
+                if useblue% % ECD QUERY 
+                    solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"ecd_lock","parameters":{"operation":"off","report":"finished"}}}'),solstis);
+                    pause(0.1)
+                    solstis_getResponse(solstis); %wait unitll it says its done with the res. unlock
+                end
                 
                 %unlock the etalon
                 solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"etalon_lock","parameters":{"operation":"off","report":"finished"}}}'),solstis);
@@ -195,7 +197,7 @@ elseif method_key==2 %feedback loop!
                 intialize_res=true;
             end
             
-            if intialize_res & useblue
+            if intialize_res && useblue
                     intialize_res=false;
                     realign_now=true;
                     stat_read_raw=solstis_query('{"message":{"transmission_id":[2],"op":"get_status"}}',solstis);
@@ -328,8 +330,12 @@ elseif method_key==2 %feedback loop!
                         pid_etalon.meas=wmhandle.GetFreq(1); 
                         pid_etalon=pid_loop(pid_etalon); %do pid
                         solstis_query(sprintf('{"message":{"transmission_id":[2],"op":"tune_etalon","parameters":{"setting":[%.10f],"report":"finished"}}}',pid_etalon.ctr_output),solstis);
-                        pause(0.1)
-                        solstis_getResponse(solstis);
+                        pause(0.2)
+                        resp=solstis_getResponse(solstis);
+                        if numel(resp)==0
+                            error('did not respond')
+                        end
+                            
                         %log this
                         log=[];
                         log.posix_time=posixtime(nowdt);
@@ -552,7 +558,7 @@ elseif method_key==2 %feedback loop!
                                             log.ecd_lock='off';
                                             log_str=sprintf('%s\n',jsonencode(log));
                                             fprintf(flog,log_str);
-                                            pause(0.1)
+                                            pause(0.5)
                                             solstis_getResponse(solstis);
                                             pause(0.5)
                                             query=sprintf('{"message":{"transmission_id":[2],"op":"ecd_lock","parameters":{"operation":"on","report":"finished"}}}');

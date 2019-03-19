@@ -14,7 +14,7 @@ classdef (Sealed) WLM < handle
 %         pool % Parallel worker pool 
         toggling = 'off'
         parf % Parallel function handle
-        timeout = 0.5; % timeout for wavelength or frequency measurement.
+        timeout = 0.02; % timeout for wavelength or frequency measurement.
     end
     
     properties (Access = private)
