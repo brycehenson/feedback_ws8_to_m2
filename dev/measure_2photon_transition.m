@@ -1,28 +1,53 @@
 %% USER PARAM
-hyperfine_transision=4; %F=3 or 4
+format longg
 current_gain=2e7; %V/A
 
-wavemeter_offset=0;%-150.4;%-145.2;
+wavemeter_offset=-35;%-150.4;%-145.2;
+% wavemeter_offset = 0;
 %the total range to scan over (from -ve freq_range/2 to +ve freq_range/2)
-freq_range=8;%60 for SAS;%8 for 2photon 
+freq_range=20;%60 for SAS;%8 for 2photon 
 delt_freq=0.2; %MHz
-settle_time=0.1;%0.3;
-volt_aq_time=0.3;
+settle_time=0.3;%0.3;
+volt_aq_time=0.3; %0.3
 extra_pause_end=1;
 extra_pause_start=1;
 plot_interval=1;
-
+num_loops = 5; %set to inf for endless loop
 log_dir='Y:\TDC_user\ProgramFiles\my_read_tdc_gui_v1.0.1\dld_output\';
 new_log_interval=60*60*1;
 
-transition_name='cs_2p_6SF3_8SF3';
+[f_struct,wl_table] = init_cs_table(); %Wavelength table is sorted
+transition_name='cs_2p_6SF3_8SF3';%'cs_6S_6P';%
+transition_freq = f_struct.(transition_name);
 
-%'cs_2p_6SF3_8SF3' filter at 822.2 pmt voltage 1160
-%'cs_2p_6SF4_8SF4'
-%'cs_6SF3_6PF2co3' solsTIS filter at 852.3 pmt voltage 1250
-%'cs_6SF4_6PF4co5' solsTIS filter at 852.3
-%TO filter 826.1
-%%
+% Transitions by wavelength for quick reference
+%     TRANSITION NAME   WAVELENGTH (nm)  FREQUENCY (MHz)
+%     cs_2p_6SF3_8SF4: [822.448186973894 364512272.92877]
+%     cs_2p_6SF3_8SF3: [822.459546609736 364507238.363]
+%     cs_2p_6SF4_8SF4: [822.468928810497 364503080.297]
+%     cs_2p_6SF4_8SF3: [822.489671693329 364493887.66523]
+%        cs_6SF3_6PF5: [852.334106041068 351731153.165371]
+%     cs_6SF3_6PF4co5: [852.33441015356  351731027.667871]
+%        cs_6SF3_6PF4: [852.334714266269 351730902.170371]
+%     cs_6SF3_6PF3co4: [852.334958112731 351730801.542871]
+%        cs_6SF3_6PF3: [852.335201959332 351730700.915371]
+%     cs_6SF3_6PF2co3: [852.335385157884 351730625.315371]
+%        cs_6SF3_6PF2: [852.335568356515 351730549.715371]
+%        cs_6SF4_6PF5: [852.356382709746 351721960.533601]
+%     cs_6SF4_6PF4co5: [852.356686838136 351721835.036101]
+%        cs_6SF4_6PF4: [852.356990966742 351721709.538601]
+%     cs_6SF4_6PF3co4: [852.35723482595  351721608.911101]
+%        cs_6SF4_6PF3: [852.357478685298 351721508.283601]
+%        cs_6SF4_6PF2: [852.357845101634 351721357.083601]
+%     cs_2p_6SF3_6DF5: [885.386949360815 338600493.509]
+%     cs_2p_6SF3_6DF4: [885.387056126153 338600452.6785]
+%     cs_2p_6SF3_6DF3: [885.387205427182 338600395.581]
+%     cs_2p_6SF4_6DF5: [885.398968134848 338595897.205]
+%     cs_2p_6SF4_6DF4: [885.399074903085 338595856.3745]
+%     cs_2p_6SF4_6DF3: [885.399224208167 338595799.277]
+
+
+
 fclose('all')
 clear('flog')
 
@@ -39,86 +64,6 @@ nowt=posixtime(datetime('now'));
 
 %  %852.3 red single photon 
 
-
-%6s->6P ( D2) single photon transtions cesium ~852nm 
-%solsTIS filter at 852.3 %pmt voltage 1250
-%REF https://steck.us/alkalidata/cesiumnumbers.1.6.pdf
-% https://www.sacher-laser.com/applications/overview/absorption_spectroscopy/caesium_d2.html line
-% identification
-% other reading https://doi.org/10.1364/OL.19.001474
-%https://doi.org/10.1143/JPSJ.74.2487 %883nm transtion
-%6^{2}S_{1/2} F=3-> 6^{2}S_{3/2} F=[2,3,4,5]
-f_cs_6SF3_6PF2=351725718.50+5170.855370625-339.64; %MHZ
-f_cs_6SF3_6PF3=351725718.50+5170.855370625-188.44; %MHZ
-f_cs_6SF3_6PF4=351725718.50+5170.855370625+12.815; %MHZ
-f_cs_6SF3_6PF5=351725718.50+5170.855370625+263.81; %MHZ
-f_cs_6SF3_6PF2co3=(f_cs_6SF3_6PF2+f_cs_6SF3_6PF3)/2;
-f_cs_6SF3_6PF3co4=(f_cs_6SF3_6PF3+f_cs_6SF3_6PF4)/2;
-f_cs_6SF3_6PF4co5=(f_cs_6SF3_6PF4+f_cs_6SF3_6PF5)/2;
-%f_cs_6SF3_6PF2co3 seems like the best option here (stronger than f_cs_6SF4_6PF4co5)
-
-%6^{2}S_{1/2} F=4->6^{2}S_{1/2} F=[2,3,4,5]
-f_cs_6SF4_6PF2=351725718.50-4021.776399375-339.64; %MHZ
-f_cs_6SF4_6PF3=351725718.50-4021.776399375-188.44; %MHZ
-f_cs_6SF4_6PF4=351725718.50-4021.776399375+12.815; %MHZ
-f_cs_6SF4_6PF5=351725718.50-4021.776399375+263.81; %MHZ
-f_cs_6SF4_6PF3co4=(f_cs_6SF4_6PF3+f_cs_6SF4_6PF4)/2;
-f_cs_6SF4_6PF4co5=(f_cs_6SF4_6PF4+f_cs_6SF4_6PF5)/2;
-%f_cs_6SF4_6PF4co5 is the best option, the rest are very weak and the F=3co5 is vclose to F=4
-
-
-
-%6S–8S two photon cesium ~822.4nm 2photon 
-%pmt voltage 1160 %filter at 822.5
-%Ref https://doi.org/10.1088/1674-1056/21/11/113701  
-% older works
-% https://doi.org/10.1016/S0030-4018(98)00662-2 (1999)
-% https://doi.org/10.1364/OL.32.000701 (2007)
-%6^{2}S_{1/2} F=[3,4] -> 8^{2}S_{1/2} F=[3,4]
-f_cs_2p_6SF3_8SF3=364507238.363;
-f_cs_2p_6SF4_8SF4=364503080.297;
-%forbidden 2 photon transtions, have not found any references, just a guess
-%have not been able to observe these
-f_cs_2p_6SF3_8SF4=f_cs_2p_6SF4_8SF4+4021.776399375+5170.85537062;
-f_cs_2p_6SF4_8SF3=f_cs_2p_6SF4_8SF4-4021.776399375-5170.85537062;
-
-
-%6S–6D_{3/2} two photon cesium ~885.4nm 2photon 
-% problem is that fluro is at 919 & 852nm and may be very hard to see with this pmt
-% filter at 885.4
-% ref https://doi.org/10.1364/OL.43.001954
-%6^{2}S_{1/2} F=[4,3] -> 6^{2}D_{3/2} F=5
-f_cs_2p_6SF4_6DF5=338595897.205;
-f_cs_2p_6SF3_6DF5=338600493.509;
-%using the measured hyperfine intervals, unsure why there is a diagreement between the table 2 and
-%the values below it
-f_cs_2p_6SF4_6DF4=f_cs_2p_6SF4_6DF5-81.661/2;
-f_cs_2p_6SF4_6DF3=f_cs_2p_6SF4_6DF4-65.336/2;
-f_cs_2p_6SF4_6DF3=f_cs_2p_6SF4_6DF3-48.859/2;
-
-f_cs_2p_6SF3_6DF4=f_cs_2p_6SF3_6DF5-81.661/2;
-f_cs_2p_6SF3_6DF3=f_cs_2p_6SF3_6DF4-65.336/2;6
-f_cs_2p_6SF3_6DF3=f_cs_2p_6SF3_6DF3-48.859/2;
-
-
-%other 2 photon
-%http://www.phys.nthu.edu.tw/seminar/AMO/2012F/Tsing.pdf
-%https://doi.org/10.1364/OL.36.000076
-%822 6S_{1/2} -> 6D_{3/2} 885.4
-%822 6S_{1/2} -> 6D_{5/2} 883.7
-
-
-switch transition_name
-    case 'cs_2p_6SF3_8SF3'
-        transition_freq=f_cs_2p_6SF3_8SF3;
-    case 'cs_2p_6SF4_8SF4'
-        transition_freq=f_cs_2p_6SF4_8SF4;
-    case 'cs_6SF3_6PF2co3'
-        transition_freq=f_cs_6SF3_6PF2co3;
-    case 'cs_6SF4_6PF4co5'
-        transition_freq=f_cs_6SF4_6PF4co5;
-end  
-
 freq_cen=transition_freq;
 freq_cen=freq_cen+wavemeter_offset; 
 
@@ -130,7 +75,8 @@ fclose(t)
 
 %%
 connected_dev=daq.getDevices;
-dev_idx=cellfun(@(x) isequal(x,'National Instruments USB-6251'),{connected_dev.Description});
+dev_idx=contains({connected_dev.Description},'USB-6251')
+%dev_idx=cellfun(@(x) isequal(x,'National Instruments USB-6251'),{connected_dev.Description});
 if sum(dev_idx)~=1
     error('somethings broken couldnt find USB-6251')
 end
@@ -173,10 +119,11 @@ plot_scan_res_fit_mean=plot([],[],'r');
 plot_scan_res_fit_std=plot([],[],'r');
 
 subplot(2,2,3)
+% plot_freq_trend_single=errorbar([nan],[nan],[nan],'r.-','LineWidth',1.5,'MarkerSize',20,'CapSize',0);
 plot_freq_trend_mean=errorbar([nan],[nan],[nan],'k.-','LineWidth',1.5,'MarkerSize',20,'CapSize',0);
 hold on
 plot_freq_trend_std=errorbar([nan],[nan],[nan],'b.-','LineWidth',1.5,'MarkerSize',20,'CapSize',0);
-legend('mean','std')
+legend('Centre','Width')
 hold off
 title('Trend')
 xlabel('Time (s)')
@@ -210,7 +157,7 @@ log_open_time=-inf;
 
 % main loop
 ii=1;
-while true
+while ii<=num_loops
     %try
     time_freq_response=nan(size(freq_delta,1),4);
     %log_open_time
@@ -348,19 +295,21 @@ while true
     fprintf('Peak Width %.4g MHZ\n', fit_mean.Coefficients.Estimate(2))
     fprintf('Estimated Peak Probe Photons %.1f s^-1 \n',photon_rate);
     fprintf('Estimated PMT Multipication %.1g\n e-·(photon)^-1\n',1/(current_gain*fit_std.Coefficients.Estimate(3)*const.electron));
-    
+    fprintf('Running mean %f±%f (se), sd %f\n',mean(freq_fits(:,2)),std(freq_fits(:,3))/length(freq_fits(:,3)),std(freq_fits(:,3)))
 
     set(plot_freq_trend_mean,'xdata', freq_fits(:,1)-freq_fits(1,1),'ydata', freq_fits(:,2));
     set(plot_freq_trend_mean,'YNegativeDelta', freq_fits(:,3),'YPositiveDelta', freq_fits(:,3))
     set(plot_freq_trend_std,'xdata', freq_fits(:,1)-freq_fits(1,1),'ydata', freq_fits(:,4));
     set(plot_freq_trend_std,'YNegativeDelta', freq_fits(:,5),'YPositiveDelta', freq_fits(:,5))
-
+%     set(plot_freq_trend_single,'xdata', freq_fits(:,1)-freq_fits(1,1),'ydata', freq_fits(:,2));
+%     set(plot_freq_trend_single,'YNegativeDelta', freq_fits(:,3),'YPositiveDelta', freq_fits(:,3))
+%     
     nowdt=datetime('now');
     log=[];
     log.posix_time=posixtime(nowdt);
     log.iso_time=datestr(nowdt,'yyyy-mm-ddTHH:MM:SS.FFF');
     log.op='scan transition';
-    log.parameters.hyperfine=hyperfine_transision;
+%     log.parameters.hyperfine=hyperfine_transision;
     log.parameters.sample_time_posix=time_freq_response(:,1);
     log.parameters.set_freq=time_freq_response(:,2);
     log.parameters.pmt_voltage_mean=time_freq_response(:,3);

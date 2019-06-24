@@ -1,31 +1,18 @@
 %manualy change the set pt of the ws8 to msquared laser feedback
-%
-%freq=362848466.40;
-%freq=362871075.28;
-%freq=362865454.07;
-%freq=362853600;
 
-%TUNE OUT filter at 826.1
-freq=362900000.00;
-freq=362865454.07; %TO at l/4 246deg
-freq=362865454.07; %TO at l/4 246deg
-%freq=362760000
-% freq=362867621%-  6000; %TO as at 2018/11/28
-%freq=362867621-50000; % -0.1nm for spectral tests
 
-%freq=362867621+20e3; % max signal
 
-freq=362867621; % Centre of scan range
-freq=362867621+15000; % Alignment
-% freq=362867621-2000; % Run starting val
-
-pred_cen= 725737743.306773/2-1000; %use a fit model to predict where the TO will be
-freq=pred_cen; % Run cen val for qwp
-freq=pred_cen+10000; % align val for qwp
-freq=pred_cen-2000; % Run starting val for qwp
-
-freq=727300952.126336/2;
-freq = 363.644749e6;
+% freq_list = [744396182.90,744396206.40,744396224.36,744396476.75];
+% width_list = [7.41,12.35,5.56,9.34];
+% scan_range = [];
+% for ii=1:length(freq_list)
+%     interval = -width_list(ii):1:width_list(ii);
+%     scan_range = [scan_range,3*interval+freq_list(ii)];
+% end
+% scan_range = sort(unique(round(scan_range)));
+% sfigure(572042);
+% plot(scan_range,'x')
+% title(sprintf('Targeted scan, %u pts',length(scan_range)))
 
 % 2photon cs cell b  
 % filter at 822.5
@@ -39,12 +26,19 @@ freq = 363.644749e6;
 %freq=700939247.242651/2;
 
 %% TRANSITION FREQS
-
-%freq = 363.651035e6;
-
+target = 744396193; 
+target = 700939257.480888-1.7154;
+% target = 701001649.5449-1.7154;%1.7154;
+% target = 744515114-23;
+% target = 744515336.76-47;
+% target = 744515206.2;
+% target = 2*372215290;
+offset = 189.0/2; %Frequency shift from AOM
+freq = target/2-offset 
+% freq = 363651705
+% freq = 363651706.794468; % Observed 412
+% freq=372198246.94175;
 fprintf('probe beam set freq %f MHz \n',freq)
-
-
 t = tcpip('0.0.0.0', 33333, 'NetworkRole', 'server');
 fopen(t)
 fwrite(t,freq,'double')

@@ -55,14 +55,14 @@ warning off instrument:fscanf:unsuccessfulRead
 %6^{2}S_{1/2} F=[3,4] -> 8^{2}S_{1/2} F=[3,4]
 f_cs_2p_6SF3_8SF3=364507238.363;
 f_cs_2p_6SF4_8SF4=364503080.297;
-wavemeter_offset=-3;%-151.19;%-145.2;
+wavemeter_offset=-.8;%-151.19;%-145.2;
 transition_freq=f_cs_2p_6SF4_8SF4;
 scan_center_freq=transition_freq+wavemeter_offset;
-scan_freq_range=5;
-scan_delt_freq=0.25; %MHz
+scan_freq_range=10;
+scan_delt_freq=0.2; %MHz
 freq_vec=scan_center_freq+linspace(-scan_freq_range/2,scan_freq_range/2,scan_freq_range/scan_delt_freq)';
 scan_step_time=0.2;
-volt_aq_time=1e-3;
+volt_aq_time=2e-2;
 scan_dat=[];
 scan_dat.set_freq_vec=freq_vec;
 

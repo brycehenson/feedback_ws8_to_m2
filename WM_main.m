@@ -1,4 +1,13 @@
-% on
+        % on
+
+%% config
+
+useblue = 0;
+
+
+
+%% heavy lifting
+
 addpath(genpath('lib'))
 addpath(genpath('dev'))
 mypool=gcp('nocreate');
@@ -30,7 +39,7 @@ warning off instrument:fscanf:unsuccessfulRead
 %At every loop, the WM feedback probes the other worker for new data and updates setpt.
 %Running locally, the WM feedback loop runs for 62+-11 ms (16Hz)
 
-useblue = 1;
+
 spmd
     r = WM_control_settable_blue(labindex,useblue);
 end
