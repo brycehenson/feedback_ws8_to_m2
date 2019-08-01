@@ -14,30 +14,33 @@
 % plot(scan_range,'x')
 % title(sprintf('Targeted scan, %u pts',length(scan_range)))
 
+wavemeter_offset=-15.5;%-150.4;%-145.2;
 % 2photon cs cell b  
 % filter at 822.5
-%freq=364507091.65 %2photon CS 6s->8s F=3
-%freq=364503080.351-147.8+0; %2photon CS 6s->8s F=4
-%freq=364507238.417-146.8; %2photon CS 6s->8s F=4
+
+freq=364507238.363+wavemeter_offset; %2photon CS 6s->8s F=3
+%freq=364507238.417; %2photon CS 6s->8s F=4
 %f_cs_6sF4_6PF5=351725718.50-4021.776399375+263.81; %MHZ
 %freq=f_cs_6sF4_6PF5;
 
-% 427nm forbidden transition
-%freq=700939247.242651/2;
+
 
 %% TRANSITION FREQS
-target = 744396193; 
-target = 700939257.480888-1.7154;
+% 427nm forbidden transition
+%target = 700939267.0+00; %-1.7154
 % target = 701001649.5449-1.7154;%1.7154;
 % target = 744515114-23;
 % target = 744515336.76-47;
 % target = 744515206.2;
 % target = 2*372215290;
-offset = 189.0/2; %Frequency shift from AOM
-freq = target/2-offset 
+%offset = 0/2; %Frequency shift from AOM
+%freq = target/2-offset; 
 % freq = 363651705
 % freq = 363651706.794468; % Observed 412
-% freq=372198246.94175;
+% freq=372198246.94175;   
+freq=725736835/2 +8000; %TOSMHT 20190722
+
+
 fprintf('probe beam set freq %f MHz \n',freq)
 t = tcpip('0.0.0.0', 33333, 'NetworkRole', 'server');
 fopen(t)

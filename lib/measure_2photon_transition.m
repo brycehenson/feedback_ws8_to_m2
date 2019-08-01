@@ -2,26 +2,30 @@
 format longg
 current_gain=2e7; %V/A
 
-wavemeter_offset=-35;%-150.4;%-145.2;
+wavemeter_offset=0.6;%-150.4;%-145.2;
 % wavemeter_offset = 0;
 %the total range to scan over (from -ve freq_range/2 to +ve freq_range/2)
-freq_range=20;%60 for SAS;%8 for 2photon 
-delt_freq=0.2; %MHz
-settle_time=0.3;%0.3;
-volt_aq_time=0.3; %0.3
+freq_range=7;%60 for SAS;%10 for 2photon 
+delt_freq=0.1;% 0.2 %MHz for 2p
+settle_time=0.05;%0.3;
+volt_aq_time=0.05; %0.5
 extra_pause_end=1;
-extra_pause_start=1;
+extra_pause_start=3;
 plot_interval=1;
-num_loops = 5; %set to inf for endless loop
+fit_noise=0;
+num_loops = 3; %set to inf for endless loop
+update_cen_pos=false;
 log_dir='Y:\TDC_user\ProgramFiles\my_read_tdc_gui_v1.0.1\dld_output\';
 new_log_interval=60*60*1;
 
-[f_struct,wl_table] = init_cs_table(); %Wavelength table is sorted
-transition_name='cs_2p_6SF3_8SF3';%'cs_6S_6P';%
+[f_struct,wl_table] = init_cs_transition_struct(); %Wavelength table is sorted
+transition_name='cs_2p_6SF3_8SF3';% %cs_2p_6SF3_8SF3  cs_2p_6SF4_8SF4 % cs_6SF4_6PF4co5 
 transition_freq = f_struct.(transition_name);
 
+%cs_2p_6SF4_8SF3 forbidden
+
 % Transitions by wavelength for quick reference
-%     TRANSITION NAME   WAVELENGTH (nm)  FREQUENCY (MHz)
+%     TRANSITION NAME   WAVE  LENGTH (nm)  FREQUENCY (MHz)
 %     cs_2p_6SF3_8SF4: [822.448186973894 364512272.92877]
 %     cs_2p_6SF3_8SF3: [822.459546609736 364507238.363]
 %     cs_2p_6SF4_8SF4: [822.468928810497 364503080.297]
@@ -100,7 +104,8 @@ subplot(2,2,1)
 plot_volt_aq=plot(time,voltage,'k.-','LineWidth',1.5,'MarkerSize',20);
 title('measuring pmt current')
 xlabel('time (s)')
-ylabel('PMT Current (nA)')
+%ylabel('PMT Current (nA)')
+ylabel('PMT Voltage (V)')
 
 subplot(2,2,2)
 plot_scan_res_mean=plot([nan],[nan],'k.-','LineWidth',1.5,'MarkerSize',20);
@@ -204,7 +209,8 @@ while ii<=num_loops
         time_freq_response(jj,3)=mean(voltage_aq); 
         time_freq_response(jj,4)=std(voltage_aq); 
         if mod(jj,plot_interval)==0
-            set(plot_volt_aq,'xdata', time,'ydata', voltage_aq/current_gain_disp);
+            %set(plot_volt_aq,'xdata', time,'ydata', voltage_aq/current_gain_disp);
+            set(plot_volt_aq,'xdata', time,'ydata', voltage_aq);
             set(plot_scan_res_mean,'xdata', freq_delta,'ydata', time_freq_response(:,3)/current_gain_disp);
             set(plot_scan_res_std,'xdata', freq_delta,'ydata', time_freq_response(:,4)/current_gain_disp);
             drawnow    
@@ -219,8 +225,8 @@ while ii<=num_loops
     %opts.Tune = 1;
     set_freq_offset=time_freq_response(:,2)-freq_cen;
     
-    cen_est=wmean(set_freq_offset,-time_freq_response(:,3));
-    std_est=std(set_freq_offset,-time_freq_response(:,3));
+    cen_est=wmean(set_freq_offset,abs(time_freq_response(:,3)));
+    std_est=std(set_freq_offset,abs(time_freq_response(:,3)));
     amp_est=-range(time_freq_response(:,3));
     offset_est=mean(time_freq_response(:,3))-amp_est/2;
     beta0 = [amp_est,std_est,cen_est,offset_est,0]; %intial guesses
@@ -235,57 +241,63 @@ while ii<=num_loops
     plot_scan_res_fit_mean=plot(xplot,yplot/current_gain_disp,'r');
     hold off
 
-    %% Fitting the noise
-    % I use a fit to the noise to procude another measurment of the offset & the noise in the
-    % laser
-    %deriv(@(x) loz3fun_offset_grad(
-    syms x
-    syms x_cen
-    % use all the previously fitted params(such as the width) except for the offset
-    amp_fit_sym=symfun(-loz3fun_offset_grad(fit_mean.Coefficients.Estimate.*[1,1,0,1,1]'+[0,0,x_cen,0,0]',x),[x,x_cen]);
-    amp_fit_fun=matlabFunction(amp_fit_sym);
-    %then use the derivative of this as the laser frequency noise componet of the PMT noise
-    deriv_amp_fit_fun=matlabFunction(symfun(abs(diff(amp_fit_sym,x)),[x,x_cen]));
-    % The noise model we use is laser_freq_noise*d signal/d freq + gain(volts/photon) * sqrt(signal)+
-    % offset
-    % this is really usefull because it gives an estimate of the system gain and the laser noise
-    % in CCD this is called the photon transfer technique
-    %http://hosting.astro.cornell.edu/academics/courses/astro3310/Books/Janesick_PhotonTransfer_SPIE1987.pdf
-    %http://spiff.rit.edu/classes/phys445/lectures/gain/gain.html
-    % sigma Signal = sqrt(sigma Background^2 + sigma Probe^2 )
-    % Signal =Background + Probe
-    % Probe= Signal - Background
-    % sigma Signal^2 = sigma Background^2 + sigma Probe^2
-    % from shot noise sigma Probe =sqrt (Probe)/ sqrt(k) (gain in photons/(volt·s)
-    % sigma Signal^2 = sigma Background^2 + (sqrt (Probe)/ k )^2
-    % sigma Signal = sqrt((sqrt (Signal-Background)/ k )^2 + sigma Background^2)
-    % sigma Signal = sqrt(( (Signal-Background)/ k ) + sigma Background^2)
-    %noise_fit_fun=@(b,x) b(1).*deriv_amp_fit_fun(x,b(2))+sqrt( (amp_fit_fun(x,b(2))+fit_mean.Coefficients.Estimate(4))./sqrt(abs(b(3))) +b(4)^2);
-    noise_fit_fun=@(b,x) b(1).*deriv_amp_fit_fun(x,b(2))+ sqrt(amp_fit_fun(x,b(2)))./sqrt(abs(b(3))) +b(4);
-    %0.000441
+    if fit_noise
+        %% Fitting the noise
+        % I use a fit to the noise to procude another measurment of the offset & the noise in the
+        % laser
+        %deriv(@(x) loz3fun_offset_grad(
+        syms x
+        syms x_cen
+        % use all the previously fitted params(such as the width) except for the offset
+        amp_fit_sym=symfun(-loz3fun_offset_grad(fit_mean.Coefficients.Estimate.*[1,1,0,1,1]'+[0,0,x_cen,0,0]',x),[x,x_cen]);
+        amp_fit_fun=matlabFunction(amp_fit_sym);
+        %then use the derivative of this as the laser frequency noise componet of the PMT noise
+        deriv_amp_fit_fun=matlabFunction(symfun(abs(diff(amp_fit_sym,x)),[x,x_cen]));
+        % The noise model we use is laser_freq_noise*d signal/d freq + gain(volts/photon) * sqrt(signal)+
+        % offset
+        % this is really usefull because it gives an estimate of the system gain and the laser noise
+        % in CCD this is called the photon transfer technique
+        %http://hosting.astro.cornell.edu/academics/courses/astro3310/Books/Janesick_PhotonTransfer_SPIE1987.pdf
+        %http://spiff.rit.edu/classes/phys445/lectures/gain/gain.html
+        % sigma Signal = sqrt(sigma Background^2 + sigma Probe^2 )
+        % Signal =Background + Probe
+        % Probe= Signal - Background
+        % sigma Signal^2 = sigma Background^2 + sigma Probe^2
+        % from shot noise sigma Probe =sqrt (Probe)/ sqrt(k) (gain in photons/(volt·s)
+        % sigma Signal^2 = sigma Background^2 + (sqrt (Probe)/ k )^2
+        % sigma Signal = sqrt((sqrt (Signal-Background)/ k )^2 + sigma Background^2)
+        % sigma Signal = sqrt(( (Signal-Background)/ k ) + sigma Background^2)
+        %noise_fit_fun=@(b,x) b(1).*deriv_amp_fit_fun(x,b(2))+sqrt( (amp_fit_fun(x,b(2))+fit_mean.Coefficients.Estimate(4))./sqrt(abs(b(3))) +b(4)^2);
+        noise_fit_fun=@(b,x) b(1).*deriv_amp_fit_fun(x,b(2))+ sqrt(amp_fit_fun(x,b(2)))./sqrt(abs(b(3))) +b(4);
+        %0.000441
+        %%
+        opts = statset('MaxIter',1e4);
+        %opts.RobustWgtFun = 'welsch' ; %a bit of robust fitting
+        %opts.Tune = 1;
+         cen_est=wmean(freq_delta,time_freq_response(:,4));
+    %     std_est=std(freq_delta,time_freq_response(:,4));
+    %     amp_est=range(time_freq_response(:,4));
+        offset_est=mean(time_freq_response(:,4));
+        %fit_mean.Coefficients.Estimate(3),
+        beta0 = [1,cen_est,1,offset_est*1e-3]; %intial guesses
+        %loz3fun_offset
+
+        fit_std = fitnlm(freq_delta,time_freq_response(:,4),noise_fit_fun,beta0,'Options',opts...
+             ,'CoefficientNames',{'freq_noise(MHz)','center','gain(photons/v)','offset'});%
+        xplot=linspace(min(freq_delta),max(freq_delta),1e3)';
+        %xplot=linspace(-50,50,1e3)';
+        yplot=predict(fit_std,xplot); 
+        subplot(2,2,4)
+        delete(plot_scan_res_fit_std)
+        hold on
+        plot_scan_res_fit_std=plot(xplot,yplot/current_gain_disp,'r');
+        hold off
     %%
-    opts = statset('MaxIter',1e4);
-    %opts.RobustWgtFun = 'welsch' ; %a bit of robust fitting
-    %opts.Tune = 1;
-     cen_est=wmean(freq_delta,time_freq_response(:,4));
-%     std_est=std(freq_delta,time_freq_response(:,4));
-%     amp_est=range(time_freq_response(:,4));
-    offset_est=mean(time_freq_response(:,4));
-    %fit_mean.Coefficients.Estimate(3),
-    beta0 = [1,cen_est,1,offset_est*1e-3]; %intial guesses
-    %loz3fun_offset
-    
-    fit_std = fitnlm(freq_delta,time_freq_response(:,4),noise_fit_fun,beta0,'Options',opts...
-         ,'CoefficientNames',{'freq_noise(MHz)','center','gain(photons/v)','offset'});%
-    xplot=linspace(min(freq_delta),max(freq_delta),1e3)';
-    %xplot=linspace(-50,50,1e3)';
-    yplot=predict(fit_std,xplot); 
-    subplot(2,2,4)
-    delete(plot_scan_res_fit_std)
-    hold on
-    plot_scan_res_fit_std=plot(xplot,yplot/current_gain_disp,'r');
-    hold off
-    %%
+    else
+        fit_std=[];
+        fit_std.Coefficients.Estimate=[nan,nan,nan];
+        fit_std.Coefficients.SE=[nan,nan,nan];
+    end
 
     freq_fits=[freq_fits;[posixtime(datetime('now')),freq_cen+fit_mean.Coefficients.Estimate(3)-transition_freq,...
         fit_mean.Coefficients.SE(3),freq_cen+fit_std.Coefficients.Estimate(2)-transition_freq,fit_std.Coefficients.SE(2)]];
@@ -325,16 +337,19 @@ while ii<=num_loops
     log.parameters.fit_to_mean.coeff_err=fit_mean.Coefficients.SE;
     log.parameters.fit_to_mean.coeff_names=fit_mean.Coefficients.Properties.RowNames;
     
-    log.parameters.fit_to_std.coeff_est=fit_std.Coefficients.Estimate;
-    log.parameters.fit_to_std.coeff_err=fit_std.Coefficients.SE;
-    log.parameters.fit_to_std.coeff_names=fit_std.Coefficients.Properties.RowNames;
+    if fit_noise
+        log.parameters.fit_to_std.coeff_est=fit_std.Coefficients.Estimate;
+        log.parameters.fit_to_std.coeff_err=fit_std.Coefficients.SE;
+        log.parameters.fit_to_std.coeff_names=fit_std.Coefficients.Properties.RowNames;
+    end
     
     log_str=sprintf('%s\n',jsonencode(log)); %so that can print to standard out
     fprintf(flog,log_str);
     pause(extra_pause_end)
     
     %set the center of the next scan to the fit from the previous
-    if fit_mean.Coefficients.Estimate(3)<freq_range/2
+    if update_cen_pos && fit_mean.Coefficients.Estimate(3)<freq_range/2
+        fprintf('updating next scan center to fit cen \n')
         freq_cen=freq_cen+fit_mean.Coefficients.Estimate(3);
     end
     time_freq_response=nan(size(freq_delta,1),3);

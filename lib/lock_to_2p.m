@@ -55,7 +55,7 @@ warning off instrument:fscanf:unsuccessfulRead
 %6^{2}S_{1/2} F=[3,4] -> 8^{2}S_{1/2} F=[3,4]
 f_cs_2p_6SF3_8SF3=364507238.363;
 f_cs_2p_6SF4_8SF4=364503080.297;
-wavemeter_offset=-.8;%-151.19;%-145.2;
+wavemeter_offset=-7.6;%-151.19;%-145.2;
 transition_freq=f_cs_2p_6SF4_8SF4;
 scan_center_freq=transition_freq+wavemeter_offset;
 scan_freq_range=10;
@@ -76,7 +76,7 @@ addpath(genpath(folder));
 
 %% initalize daq
 connected_dev=daq.getDevices;
-dev_idx=cellfun(@(x) isequal(x,'National Instruments USB-6251'),{connected_dev.Description});
+dev_idx=cellfun(@(x) isequal(x,'National Instruments(TM) USB-6251'),{connected_dev.Description});
 if sum(dev_idx)~=1
     error('somethings broken couldnt find USB-6251')
 end

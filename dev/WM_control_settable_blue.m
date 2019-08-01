@@ -74,9 +74,9 @@ elseif method_key==2 %feedback loop!
     align_setpoint_change=5e3; %realign if the setpoint changes by this much
     align_err_thresh=50; %how close the laser needs to be before realigning
     resonator_range=10000; %threshold in mhz before it considers doing an etalon search
-    intv_beam_align=60*10; %how often to do an auto realign (s)
+    intv_beam_align=60*100; %how often to do an auto realign (s)
     intv_blue_meas=1;           %how often to measure the blue light
-    ecd_relock_pd_thresh=0.2;%0.65 %min power before relock attempt
+    ecd_relock_pd_thresh=0.1;%0.65 %min power before relock attempt
     ecd_relock_err_thresh=200; %MHz how close to the set point does the laser have to be to bother relocking the ECD
     
     pid_res.k_int=-2e-2;

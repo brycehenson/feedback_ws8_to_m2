@@ -5,12 +5,19 @@
 
 %freq_cen=364507238.417;
 %freq_cen=364507091.65;
-freq_cen=364503080.297;
-freq_range=3;
-steps=50;
-step_time=0.1;
+
+wavemeter_offset=0;%-150.4;%-145.2;
+% 2photon cs cell b  
+% filter at 822.5
+%freq_cen=364507238.363+wavemeter_offset %2photon CS 6s->8s F=3
+freq_cen=351730625+1000;
+freq_range=20;
+steps=10;
+step_time=0.10;
 extra_pause=0;
-freq_delta=linspace(-freq_range,freq_range,steps);
+freq_delta=[linspace(-freq_range,freq_range,steps),linspace(freq_range,-freq_range,steps)];
+%freq_delta=linspace(0,freq_range,steps);
+
 ii=1;
 while true
     freq=freq_cen+freq_delta(ii);
