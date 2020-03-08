@@ -1,5 +1,5 @@
 # WS8 Wavemeter to M Squared SolsTiS Laser Feedback
-***Bryce Henson, [Jacob A. Ross](https://github.com/GroundhogState)***    
+***[Bryce M. Henson](https://github.com/brycehenson), [Jacob A. Ross](https://github.com/GroundhogState)***    
 **Status:** This Code is **working but messy inside**. Unit Testing is **not** implemented.
 
 Uses software in the loop feedback of the optical frequency of a M Squared SolsTiS Laser (with doubler) to a WS8 wavemeter.
