@@ -2,6 +2,9 @@
 ***[Bryce M. Henson](https://github.com/brycehenson), [Jacob A. Ross](https://github.com/GroundhogState)***    
 **Status:** This Code is **working but messy inside**. Unit Testing is **not** implemented.
 
+[![Build Status](https://img.shields.io/static/v1.svg?label=CSL&message=software%20against%20climate%20change&color=green?style=flat&logo=github)](https://img.shields.io/static/v1.svg?label=CSL&message=software%20against%20climate%20change&color=green?style=flat&logo=github)
+
+
 Uses software in the loop feedback of the optical frequency of a M Squared SolsTiS Laser (with doubler) to a WS8 wavemeter.
 Checks if the laser has unlocked either the doubler or the Ti:Saf and relocks.
 Can instigate an unlock of the doubler and a scan of the etalon.
